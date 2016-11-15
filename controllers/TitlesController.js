@@ -2,9 +2,10 @@ var http    = require('http'),
     express = require('express'),
     request = require('request'),
     router  = express.Router(),
+//step  = require('step'), uncomment if using step.js instead of async
+    async = require('async'),
     _       = require('underscore'),
     titleRegex = new RegExp("<title>(.*?)</title>", "i");
-
 
 router.get('/', function(req, res) {
     counter   = 0;
@@ -19,17 +20,23 @@ router.get('/', function(req, res) {
         // Remove empty strings from addresses
         addresses = addresses.filter(String);
 
-        // Fetch titles of these addresses
-        _.each(addresses, function(address) {
-            fetchPageTitle(address);
+        // Or use 'async.mapSeries' to pull titles in series
+        async.map(addresses, fetchPageTitle, function(err, result){
+            if (err) {
+                console.log("Error with async: " + err);
+            }
         });
+
+        // using step.js
+        //step(addresses, fetchPageTitle)
 
     } else {
         serveTitles(null);
     }
 });
 
-function fetchPageTitle(url) {
+
+function fetchPageTitle(url, callbackFetchPageTitle) {
 
     // Prepend 'http://' if not present
     var dup_url = url;
@@ -40,6 +47,9 @@ function fetchPageTitle(url) {
     request(dup_url, function(err, response, body) {
         parseResponseBody(url, err, body)
     });
+
+    console.log('fetchPageTitle Finished: ' + url);
+    callbackFetchPageTitle(null);
 
 }
 
