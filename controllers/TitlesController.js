@@ -2,9 +2,8 @@ var http    = require('http'),
     express = require('express'),
     request = require('request'),
     router  = express.Router(),
-//step  = require('step'), uncomment if using step.js instead of async
-    async = require('async'),
     _       = require('underscore'),
+    rsvp    = require('rsvp'),
     titleRegex = new RegExp("<title>(.*?)</title>", "i");
 
 router.get('/', function(req, res) {
@@ -20,23 +19,28 @@ router.get('/', function(req, res) {
         // Remove empty strings from addresses
         addresses = addresses.filter(String);
 
-        // Or use 'async.mapSeries' to pull titles in series
-        async.map(addresses, fetchPageTitle, function(err, result){
-            if (err) {
-                console.log("Error with async: " + err);
-            }
+        // Fetch titles of these addresses
+        _.each(addresses, function(address) {
+            fetchPageTitle(address).then(promiseKept, promiseBroken);
         });
-
-        // using step.js
-        //step(addresses, fetchPageTitle)
 
     } else {
         serveTitles(null);
     }
 });
 
+function promiseKept(data, response){
+    console.log("promise kept for url: "+ data.url);
+    callback(data.url, data.title);
+}
 
-function fetchPageTitle(url, callbackFetchPageTitle) {
+function promiseBroken(data, reason){
+    console.log("promise broken for url: "+ data.url);
+    callback(data.url, data.title);
+}
+
+
+function fetchPageTitle(url) {
 
     // Prepend 'http://' if not present
     var dup_url = url;
@@ -44,28 +48,24 @@ function fetchPageTitle(url, callbackFetchPageTitle) {
         dup_url = 'http://' + dup_url;
     }
 
-    request(dup_url, function(err, response, body) {
-        parseResponseBody(url, err, body)
+    var promise = new rsvp.Promise(function(resolve, reject) {
+        request(dup_url, function(err, response, body) {
+            parseResponseBody(url, err, body, resolve, reject)
+        });
     });
 
-    console.log('fetchPageTitle Finished: ' + url);
-    callbackFetchPageTitle(null);
-
+    return promise;
 }
 
-function parseResponseBody(url, err, body) {
+function parseResponseBody(url, err, body, resolve, reject) {
     if (err) {
         console.log(err);
-        callback(url, 'NO RESPONSE');
+        reject({url: url, title: 'NO RESPONSE'});
         return;
     }
     // Find the title tag using regex
     var match = titleRegex.exec(body);
-    if (match && match[1]) {
-        callback(url, '"' + match[1] + '"');
-    } else {
-        callback(url, 'Title Tag missing');
-    }
+    (match && match[1]) ? resolve({url: url, title: '"' + match[1] + '"'}) :  reject({url: url, title: 'Title Tag missing'});
 }
 
 // Callback function to update the 'sites' object
