@@ -1,0 +1,10 @@
+<% if (sites && _.size(sites) != 0) { %>
+    <h1> Following are the titles of given websites: </h1>
+    <ul>
+        <% _.each( sites, function( title, site ) { %>
+            <li> <%= site %> - <%= title %></li>
+        <% }); %>
+    </ul>
+<% } else { %>
+    <h1> No addresses provided in query string </h1>
+<% } %>
