@@ -1,17 +1,57 @@
 var http    = require('http'),
+    cheerio = require('cheerio'),
     express = require('express'),
     request = require('request'),
-    router  = express.Router(),
-//step  = require('step'), uncomment if using step.js instead of async
+    router  = express(),
     async = require('async'),
-    _       = require('underscore'),
-    titleRegex = new RegExp("<title>(.*?)</title>", "i");
+    _       = require('underscore');
 
 router.get('/', function(req, res) {
-    counter   = 0;
-    addresses = [];
-    sites     = {};
-    tres      = res;
+    function fetchPageTitle(url) {
+        // Prepend 'http://' if not present
+        if (!url.match(/^[a-zA-Z]+:\/\//)) {
+            url = 'http://' + url;
+        }
+
+        http.get(url, function(response){
+            var body = '';
+            response.on('data', function(d) {
+                body += d;
+            });
+            response.on('end', function() {
+                var dom = cheerio.load(body);
+                callback(url, '"' + (dom('title').text()) ? dom('title').text() : 'Title Tag missing' + '"');
+            });
+        }).on('error', function(e){
+            console.log("Error occurred - http.get ", e);
+            callback(url, 'NO RESPONSE');
+            return;
+        });
+
+    }
+
+    // Callback function to update the 'sites' object
+    function callback(url, siteTitle) {
+        sites[counter] = url + ' - '+ siteTitle;
+        counter++;
+
+        if (counter == addresses.length) {
+            serveTitles(sites);
+        }
+    }
+
+    // Function to serve the titles to page
+    function serveTitles(sitesObject) {
+        tres.render('titles', {
+            sites: sitesObject,
+            _: _
+        });
+    }
+
+    var counter   = 0,
+        addresses = [],
+        sites     = {},
+        tres      = res;
 
     if (req.query.address) {
         // Populate 'addresses' depending on the number of address queries
@@ -31,57 +71,10 @@ router.get('/', function(req, res) {
         //step(addresses, fetchPageTitle)
 
     } else {
+        res.statusCode = 404;
         serveTitles(null);
+        res.end();
     }
 });
 
-
-function fetchPageTitle(url, callbackFetchPageTitle) {
-
-    // Prepend 'http://' if not present
-    var dup_url = url;
-    if (!dup_url.match(/^[a-zA-Z]+:\/\//)) {
-        dup_url = 'http://' + dup_url;
-    }
-
-    request(dup_url, function(err, response, body) {
-        parseResponseBody(url, err, body)
-    });
-
-    console.log('fetchPageTitle Finished: ' + url);
-    callbackFetchPageTitle(null);
-
-}
-
-function parseResponseBody(url, err, body) {
-    if (err) {
-        console.log(err);
-        callback(url, 'NO RESPONSE');
-        return;
-    }
-    // Find the title tag using regex
-    var match = titleRegex.exec(body);
-    if (match && match[1]) {
-        callback(url, '"' + match[1] + '"');
-    } else {
-        callback(url, 'Title Tag missing');
-    }
-}
-
-// Callback function to update the 'sites' object
-function callback(url, siteTitle) {
-    sites[url] = siteTitle;
-    counter++;
-
-    if (counter == addresses.length) {
-        serveTitles(sites);
-    }
-}
-
-// Function to serve the titles to page
-function serveTitles(sitesObject) {
-    tres.render('titles', {
-        sites: sitesObject
-    });
-}
 module.exports = router;

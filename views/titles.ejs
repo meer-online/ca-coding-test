@@ -1,8 +1,8 @@
 <% if (sites && _.size(sites) != 0) { %>
     <h1> Following are the titles of given websites: </h1>
     <ul>
-        <% _.each( sites, function( title, site ) { %>
-            <li> <%= site %> - <%= title %></li>
+        <% _.each( sites, function( title, index ) { %>
+            <li> <%= title %></li>
         <% }); %>
     </ul>
 <% } else { %>
