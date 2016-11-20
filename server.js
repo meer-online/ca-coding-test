@@ -1,6 +1,6 @@
 var app = require('./app');
-app.set('port', process.env.PORT || 8080);
+var conf = require('./config.js');
 
-var server = app.listen(app.get('port'), function() {
+var server = app.listen(conf.get('port'), conf.get('ip'), function() {
     console.log('app listening on port '+server.address().port);
 });
